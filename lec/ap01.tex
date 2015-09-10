@@ -11,3 +11,268 @@
 \end{itemize}
 
 
+\chapter{Лістинги}
+\section{Програмна реалізація алгоритму Хаффмана за допомогою кодового дерева}
+
+\begin{lstlisting}[label=code:haff,caption=Програмна реалізація алгоритму Хаффмана]
+#include "stdafx.h"
+#include <iostream>
+using namespace std;
+struct sym { 
+      unsigned char ch;
+      float freq;     
+      char code[255];
+      sym *left;
+      sym *right;
+};
+void Statistics(char *String);
+sym *makeTree(sym *psym[],int k);
+void makeCodes(sym *root);
+void CodeHuffman(char *String,char *BinaryCode, sym *root);
+void DecodeHuffman(char *BinaryCode,char *ReducedString, 
+                   sym *root);
+int chh;//переменная для подсчета информация из строки
+int k=0;
+//счётчик количества различных букв, уникальных символов
+int kk=0;//счетчик количества всех знаков в файле
+int kolvo[256]={0};
+//инициализируем массив количества уникальных символов
+sym simbols[256]={0};//инициализируем массив записей 
+sym *psym[256];//инициализируем массив указателей на записи
+float summir=0;//сумма частот встречаемости
+
+int _tmain(int argc, _TCHAR* argv[]){
+  char *String = new char[1000];
+  char *BinaryCode = new char[1000];
+  char *ReducedString = new char[1000];
+  String[0] = BinaryCode[0] = ReducedString[0] = 0;
+  cout << "Введите строку для кодирования : ";
+  cin >> String;
+  sym *symbols = new sym[k];
+  //создание динамического массива структур simbols
+  sym **psum = new sym*[k];
+  //создание динамического массива указателей на simbols
+  Statistics(String);
+  sym *root = makeTree(psym,k);
+  //вызов функции создания дерева Хаффмана    
+  makeCodes(root);//вызов функции получения кода
+  CodeHuffman(String,BinaryCode,root);
+  cout << "Закодированная строка : " << endl;
+  cout << BinaryCode << endl;
+  DecodeHuffman(BinaryCode,ReducedString, root);
+  cout << "Раскодированная строка : " << endl;
+  cout << ReducedString << endl;
+  delete psum;
+  delete String;
+  delete BinaryCode;
+  delete ReducedString;
+  system("pause");
+  return 0;
+}
+//рeкурсивная функция создания дерева Хаффмана
+sym *makeTree(sym *psym[],int k) { 
+  int i, j;
+    sym *temp;
+    temp = new sym;
+    temp->freq = psym[k-1]->freq+psym[k-2]->freq;
+    temp->code[0] = 0;
+    temp->left = psym[k-1];
+    temp->right = psym[k-2];
+    if ( k == 2 )
+        return temp;
+    else {
+    //внесение в нужное место массива элемента дерева Хаффмана
+      for ( i = 0; i < k; i++)
+        if ( temp->freq > psym[i]->freq ) {
+          for( j = k - 1; j > i; j--)
+            psym[j] = psym[j-1]; 
+            psym[i] = temp;
+            break;
+        } 
+    }
+  return makeTree(psym,k-1);
+}
+//рекурсивная функция кодирования дерева
+void makeCodes(sym *root) { 
+  if ( root->left ) {
+    strcpy(root->left->code,root->code);
+    strcat(root->left->code,"0");
+    makeCodes(root->left);
+  }
+  if ( root->right ) {
+    strcpy(root->right->code,root->code);
+    strcat(root->right->code,"1");
+    makeCodes(root->right);
+  }
+}
+/*функция подсчета количества каждого символа и его вероятности*/
+void Statistics(char *String){
+  int i, j;
+  //побайтно считываем строку и составляем таблицу встречаемости 
+  for ( i = 0; i < strlen(String); i++){
+    chh = String[i];
+    for ( j = 0; j < 256; j++){
+      if (chh==simbols[j].ch) {
+        kolvo[j]++;
+        kk++; 
+        break;
+      }
+      if (simbols[j].ch==0){
+        simbols[j].ch=(unsigned char)chh;
+        kolvo[j]=1;
+        k++; kk++;
+        break;
+      } 
+    } 
+  }
+  // расчет частоты встречаемости
+  for ( i = 0; i < k; i++)
+    simbols[i].freq = (float)kolvo[i] / kk;
+  // в массив указателей заносим адреса записей
+  for ( i = 0; i < k; i++) 
+    psym[i] = &simbols[i];
+  //сортировка по убыванию 
+  sym tempp;
+  for ( i = 1; i < k; i++)
+  for ( j = 0; j < k - 1; j++)
+    if ( simbols[j].freq < simbols[j+1].freq ){
+      tempp = simbols[j];
+      simbols[j] = simbols[j+1];
+      simbols[j+1] = tempp;
+    }
+  for( i=0;i<k;i++)  {
+    summir+=simbols[i].freq; 
+    printf("Ch= %d\tFreq= %f\tPPP= %c\t\n",simbols[i].ch,
+            simbols[i].freq,psym[i]->ch,i);
+  }
+  printf("\n Slova = %d\tSummir=%f\n",kk,summir);
+}
+//функция кодирования строки
+void CodeHuffman(char *String,char *BinaryCode, sym *root){
+  for (int  i = 0; i < strlen(String); i++){
+    chh = String[i];
+    for (int  j = 0; j < k; j++)
+      if ( chh == simbols[j].ch ){
+        strcat(BinaryCode,simbols[j].code);
+      }
+  }
+}
+//функция декодирования строки
+void DecodeHuffman(char *BinaryCode,char *ReducedString, 
+                   sym *root){
+  sym *Current;// указатель в дереве
+  char CurrentBit;// значение текущего бита кода
+  int BitNumber;
+  int CurrentSimbol;// индекс распаковываемого символа
+  bool FlagOfEnd;  // флаг конца битовой последовательности
+  FlagOfEnd = false;
+  CurrentSimbol = 0;
+  BitNumber = 0;
+  Current = root;
+  //пока не закончилась битовая последовательность
+  while ( BitNumber != strlen(BinaryCode) ) {
+    //пока не пришли в лист дерева
+    while (Current->left != NULL && Current->right != NULL && 
+           BitNumber != strlen(BinaryCode) ) {
+      //читаем значение очередного бита
+      CurrentBit = BinaryCode[BitNumber++];
+      //бит – 0, то идем налево, бит – 1, то направо
+      if ( CurrentBit == '0' ) 
+        Current = Current->left;
+      else 
+        Current = Current->right;
+    }
+    //пришли в лист и формируем очередной символ
+    ReducedString[CurrentSimbol++] = Current->ch;
+    Current = root;
+  }
+  ReducedString[CurrentSimbol] = 0;
+}
+\end{lstlisting}
+
+
+\section{Опис функції сортування простим злиттям}
+
+\begin{lstlisting}[label=code:sort111,caption=Програмна реалізація функції сортування простим злиттям]
+//Описание функции сортировки простым слиянием
+void Simple_Merging_Sort (char *name){
+  int a1, a2, k, i, j, kol, tmp;
+  FILE *f, *f1, *f2;
+  kol = 0;
+  if ( (f = fopen(name,"r")) == NULL )
+    printf("\nИсходный файл не может быть прочитан...");
+  else {
+    while ( !feof(f) ) {
+      fscanf(f,"%d",&a1);
+      kol++;
+    }
+    fclose(f);
+  }
+  k = 1;
+  while ( k < kol ){
+    f = fopen(name,"r");
+    f1 = fopen("smsort_1","w");
+    f2 = fopen("smsort_2","w");
+    if ( !feof(f) ) fscanf(f,"%d",&a1);
+    while ( !feof(f) ){
+      for ( i = 0; i < k && !feof(f) ; i++ ){
+        fprintf(f1,"%d ",a1);
+        fscanf(f,"%d",&a1);
+      }
+      for ( j = 0; j < k && !feof(f) ; j++ ){
+        fprintf(f2,"%d ",a1);
+        fscanf(f,"%d",&a1);
+      }
+    }
+    fclose(f2);
+    fclose(f1);
+    fclose(f);
+
+    f = fopen(name,"w");
+    f1 = fopen("smsort_1","r");
+    f2 = fopen("smsort_2","r");
+    if ( !feof(f1) ) fscanf(f1,"%d",&a1);
+    if ( !feof(f2) ) fscanf(f2,"%d",&a2);
+    while ( !feof(f1) && !feof(f2) ){
+      i = 0;
+      j = 0;
+      while ( i < k && j < k && !feof(f1) && !feof(f2) ) {
+        if ( a1 < a2 ) {
+          fprintf(f,"%d ",a1);
+          fscanf(f1,"%d",&a1);
+          i++;
+        }
+        else {
+          fprintf(f,"%d ",a2);
+          fscanf(f2,"%d",&a2);
+          j++;
+        }
+      }
+      while ( i < k && !feof(f1) ) {
+        fprintf(f,"%d ",a1);
+        fscanf(f1,"%d",&a1);
+        i++;
+      }
+      while ( j < k && !feof(f2) ) {
+        fprintf(f,"%d ",a2);
+        fscanf(f2,"%d",&a2);
+        j++;
+      }
+    }
+    while ( !feof(f1) ) {
+      fprintf(f,"%d ",a1);
+      fscanf(f1,"%d",&a1);
+    }
+    while ( !feof(f2) ) {
+      fprintf(f,"%d ",a2);
+      fscanf(f2,"%d",&a2);
+    }
+    fclose(f2);
+    fclose(f1);
+    fclose(f);
+    k *= 2;
+  }
+  remove("smsort_1");
+  remove("smsort_2");
+}
+\end{lstlisting}
